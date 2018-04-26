@@ -10,7 +10,7 @@ namespace UE4_Binary_Builder
 {
     public partial class MainWindow : Form
     {
-        private static string AUTOMATION_TOOL_NAME = "AutomationTool";
+        private static string AUTOMATION_TOOL_NAME = "AutomationToolLauncher";
         private string AutomationExePath = Settings.Default.AutomationPath;
         private Process AutomationToolProcess;
 
@@ -37,11 +37,16 @@ namespace UE4_Binary_Builder
             bWithIOS.Checked = Settings.Default.bWithIOS;
             bWithTVOS.Checked = Settings.Default.bWithTVOS;
             bWithSwitch.Checked = Settings.Default.bWithSwitch;
+            bWithPS4.Checked = Settings.Default.bWithPS4;
+            bWithXboxOne.Checked = Settings.Default.bWithXboxOne;
 
             bWithDDC.Checked = Settings.Default.bWithDDC;
             bSignExecutables.Checked = Settings.Default.bSignExes;
             bEnableSymStore.Checked = Settings.Default.bSymStore;
             bCleanBuild.Checked = Settings.Default.bCleanBuild;
+            bWithFullDebugInfo.Checked = Settings.Default.bWithFullDebugInfo;
+
+            GameConfigurations.Text = Settings.Default.GameConfigurations;
         }
 
         private void bHostPlatformOnly_CheckedChanged(object sender, EventArgs e)
@@ -55,6 +60,8 @@ namespace UE4_Binary_Builder
             bWithIOS.Enabled = !bHostPlatformOnly.Checked;
             bWithTVOS.Enabled = !bHostPlatformOnly.Checked;
             bWithSwitch.Enabled = !bHostPlatformOnly.Checked;
+            bWithPS4.Enabled = !bHostPlatformOnly.Checked;
+            bWithXboxOne.Enabled = !bHostPlatformOnly.Checked;
         }
 
         private void BuildRocketUE_Click(object sender, EventArgs e)
@@ -78,7 +85,18 @@ namespace UE4_Binary_Builder
                 }
 
                 BuildRocketUE.Enabled = false;
-                string CommandLineArgs = "BuildGraph -target=\"Make Installed Build Win64\" -script=Engine/Build/InstalledEngineBuild.xml -set:WithDDC=" + GetConditionalString(bWithDDC.Checked) + " -set:SignExecutables=" + GetConditionalString(bSignExecutables.Checked) + " -set:EnableSymStore=" + GetConditionalString(bEnableSymStore.Checked);                
+
+                if (GameConfigurations.Text == "")
+                {
+                    GameConfigurations.Text = "Development;Shipping";
+                }
+
+                string CommandLineArgs = String.Format("BuildGraph -target=\"Make Installed Build Win64\" -script=Engine/Build/InstalledEngineBuild.xml -set:WithDDC={0} -set:SignExecutables={1} -set:EmbedSrcSrvInfo={2} -set:GameConfigurations={3} -set:WithFullDebugInfo={4}", 
+                    GetConditionalString(bWithDDC.Checked), 
+                    GetConditionalString(bSignExecutables.Checked), 
+                    GetConditionalString(bEnableSymStore.Checked), 
+                    GameConfigurations.Text,
+                    GetConditionalString(bWithFullDebugInfo.Checked));
 
                 if (bHostPlatformOnly.Checked)
                 {
@@ -86,7 +104,7 @@ namespace UE4_Binary_Builder
                 }
                 else
                 {
-                    CommandLineArgs += String.Format(" -set:WithWin64={0} -set:WithWin32={1} -set:WithMac={2} -set:WithAndroid={3} -set:WithIOS={4} -set:WithTVOS={5} -set:WithLinux={6} -set:WithHTML5={7} -set:WithSwitch={8}", 
+                    CommandLineArgs += String.Format(" -set:WithWin64={0} -set:WithWin32={1} -set:WithMac={2} -set:WithAndroid={3} -set:WithIOS={4} -set:WithTVOS={5} -set:WithLinux={6} -set:WithHTML5={7} -set:WithSwitch={8} -set:WithPS4={9} -set:WithXboxOne={10}", 
                         GetConditionalString(bWithWin64.Checked),
                         GetConditionalString(bWithWin32.Checked),
                         GetConditionalString(bWithMac.Checked),
@@ -95,7 +113,9 @@ namespace UE4_Binary_Builder
                         GetConditionalString(bWithTVOS.Checked),
                         GetConditionalString(bWithLinux.Checked),
                         GetConditionalString(bWithHTML5.Checked),
-                        GetConditionalString(bWithSwitch.Checked));
+                        GetConditionalString(bWithSwitch.Checked),
+                        GetConditionalString(bWithPS4.Checked),
+                        GetConditionalString(bWithXboxOne.Checked));
                 }
 
                 if (bCleanBuild.Checked)
@@ -139,7 +159,7 @@ namespace UE4_Binary_Builder
                 }
                 else
                 {
-                    MessageBox.Show("This is not Automation Tool. Please select AutomationTool.exe", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("This is not Automation Tool Launcher. Please select AutomationToolLauncher.exe", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -163,17 +183,22 @@ namespace UE4_Binary_Builder
             Settings.Default.bWithIOS = bWithIOS.Checked;
             Settings.Default.bWithTVOS = bWithTVOS.Checked;
             Settings.Default.bWithSwitch = bWithSwitch.Checked;
+            Settings.Default.bWithPS4 = bWithPS4.Checked;
+            Settings.Default.bWithXboxOne = bWithXboxOne.Checked;
 
             Settings.Default.bWithDDC = bWithDDC.Checked;
             Settings.Default.bSignExes = bSignExecutables.Checked;
             Settings.Default.bSymStore = bEnableSymStore.Checked;
             Settings.Default.bCleanBuild = bCleanBuild.Checked;
+            Settings.Default.bWithFullDebugInfo = bWithFullDebugInfo.Checked;
+
+            Settings.Default.GameConfigurations = GameConfigurations.Text;
             Settings.Default.Save();
         }
 
         private void AboutMenu_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("A helper application designed to create binary version of Unreal Engine 4 from source.\n\nCreated by Satheesh (ryanjon2040)");
+            MessageBox.Show("A helper application designed to create binary version of Unreal Engine 4 from source.\n\nCreated by Satheesh (ryanjon2040)\n\nUpdated for 4.18 and PS4/Xbox Support by James Baxter (TheJamsh)");
         }
 
         private void GetSourceCodeMenu_Click(object sender, EventArgs e)
@@ -194,6 +219,7 @@ namespace UE4_Binary_Builder
         private void AutomationToolProcess_Exited(object sender, EventArgs e)
         {
             SetLogText(string.Format("AutomationToolProcess exited with code {0}\n", AutomationToolProcess.ExitCode.ToString()));
+            BuildRocketUE.Enabled = true;
         }
 
         private void AddLog(string Message)
